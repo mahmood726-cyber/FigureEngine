@@ -448,7 +448,8 @@ def _kamada_kawai_layout(treatments: list[dict], edges: list[dict]) -> dict:
                 if dist[i, k] + dist[k, j] < dist[i, j]:
                     dist[i, j] = dist[i, k] + dist[k, j]
     # Replace inf with max + 1
-    max_d = np.max(dist[dist < float('inf')])
+    finite_vals = dist[dist < float('inf')]
+    max_d = np.max(finite_vals) if len(finite_vals) > 0 else 0.0
     dist[dist == float('inf')] = max_d + 1
 
     # Initial layout: circle
@@ -460,7 +461,8 @@ def _kamada_kawai_layout(treatments: list[dict], edges: list[dict]) -> dict:
         pos[i, 1] = 0.5 + 0.35 * math.sin(angle)
 
     # Spring-electric optimisation (simple)
-    L0 = 1.0 / max_d  # ideal edge length unit
+    # Guard against max_d==0 (fully disconnected graph) to avoid division by zero
+    L0 = 1.0 / max(max_d, 1.0)  # ideal edge length unit
     for iteration in range(200):
         forces = np.zeros_like(pos)
         for i in range(n):
@@ -502,6 +504,9 @@ def draw_network(data: dict, style: dict, width_in: float, title: str | None):
     # Node sizes
     patients = {t['name']: t.get('n_patients', 100) for t in treatments}
     max_p = max(patients.values()) if patients else 1
+    # Guard against max_p==0 to avoid division by zero when all n_patients are 0
+    if max_p == 0:
+        max_p = 1
     min_node = 300
     max_node = 2000
 
